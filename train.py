@@ -21,8 +21,8 @@ from torch.utils.data import dataloader
 from torch.utils.tensorboard import SummaryWriter
 
 
-#current_path = os.getcwd()
-current_path = 'D:/deepfake-detection'
+current_path = os.getcwd()
+#current_path = 'D:/deepfake-detection'
 train_path = current_path + '/train/'
 val_path = current_path + '/val/'
 train_fake_path = train_path + 'fake/'
@@ -234,8 +234,8 @@ def main():
 
 
     if not os.path.exists(train_path) or not os.path.exists(val_path):
-        # clone_data(args.image_path)
-        clone_data('D:/deepfake-detection/images/')
+        clone_data(args.image_path)
+        #clone_data('D:/deepfake-detection/images/')
     else:
         print('Path {} exist'.format(train_path))
 
