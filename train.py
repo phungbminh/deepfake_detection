@@ -34,7 +34,7 @@ val_real_path = val_path + 'real/'
 # divede the images provided into training and validation set (8:2)
 # create directories
 def clone_data(image_path):
-
+    print('Spliting dataset...')
     if not os.path.exists(train_path):
         os.makedirs(train_path)
     if not os.path.exists(val_path):
@@ -57,11 +57,13 @@ def clone_data(image_path):
 
     test_fake_num = 0
     test_real_num = 0
-    print(image_path)
+
     # loop through images folder
     for rootpath, dirnames, filenames in os.walk(image_path):
+
         for dirname in dirnames:
             if dirname == 'fake_deepfake':
+                print(' > fake_deepfake:')
                 # generate 800 random number in the range [0, 3999] to represent those go to val
                 # force pseudorandom split
                 random.seed(4487)
@@ -85,6 +87,7 @@ def clone_data(image_path):
                         train_fake_num += 1
                 print('done')
             elif dirname == 'fake_face2face':
+                print(' > fake_face2face:')
                 # generate 800 random number in the range [0, 3999] to represent those go to val
                 # force pseudorandom split
                 random.seed(4486)
@@ -108,6 +111,7 @@ def clone_data(image_path):
                         train_fake_num += 1
                 print('done')
             elif dirname == 'real':
+                print(' > real:')
                 # generate 800 random number in the range [0, 3999] to represent those go to val
                 # force pseudorandom split
                 random.seed(4485)
@@ -158,6 +162,30 @@ class DFD_dataset(Dataset):
 
         return img, label
 
+def train(network, trainloader, optimizer, criterion, device, seeds, epoch):
+    network.train()
+    running_loss = 0.0
+    set_seed(seeds[epoch])  # Set random seed for the current epoch
+    total_batches = len(trainloader)
+
+    for i, data in enumerate(trainloader):
+        inputs, labels = data
+        inputs = inputs.to(device)
+        labels = labels.to(device)
+
+        optimizer.zero_grad()  # Zero the parameter gradients
+        outputs, x = network(inputs)  # Forward pass
+        loss = criterion(outputs, labels)  # Calculate loss
+        loss.backward()  # Backward pass
+        optimizer.step()  # Optimize
+
+        running_loss += loss.item()
+        percent_complete = (i + 1) / total_batches * 100
+        print(f'\rEpoch [{epoch + 1}], Batch [{i + 1}/{total_batches}] - Processing: {percent_complete:.2f}%', end='')
+
+    epoch_loss = running_loss / len(trainloader)
+    print(f'\nEpoch [{epoch + 1}] Loss: {epoch_loss:.4f}')
+    return epoch_loss
 
 # define test function to calculate both training and val accuracy
 def test(network, loader, optimizer, device):
@@ -190,6 +218,11 @@ def set_seed(seed):
     torch.cuda.manual_seed(seed)
     torch.cuda.manual_seed_all(seed)
     np.random.seed(seed)
+
+def evaluate(network, dataloader, optimizer):
+    accuracy = test(network, dataloader, optimizer)
+    return accuracy
+
 def main():
     parser = argparse.ArgumentParser(description='CNN Deepfake detection')
     parser.add_argument('--device', type=int, default=0,help='which gpu to use if any (default: 0)')
@@ -271,37 +304,13 @@ def main():
     for epoch in range(epoch_num):
         print("=====Epoch {}".format(epoch))
         print('Training...')
+        loss = train(network, trainloader, optimizer, criterion, device, seeds, epoch)
+        training_loss.append(loss)
 
-        network.train()
-        running_loss = 0.0
-        # set random seed for current epoch
-        set_seed(seeds[epoch])
-        # Lấy tổng số batch trong trainloader
-        total_batches = len(trainloader)
-
-        for i, data in enumerate(trainloader):
-            # get the inputs
-            inputs, labels = data
-            inputs = inputs.to(device)
-            labels = labels.to(device)
-            # zero the parameter gradients
-            optimizer.zero_grad()
-            # forward + backward + optimize
-            outputs, x = network(inputs)
-            loss = criterion(outputs, labels)
-            loss.backward()
-            optimizer.step()
-            running_loss += loss.item()
-            # Tính toán phần trăm hoàn thành
-            percent_complete = (i + 1) / total_batches * 100
-            print( f'\rEpoch [{epoch + 1}/{epoch_num}], Batch [{i + 1}/{total_batches}] - Processing: {percent_complete:.2f}%', end='')
-
-            # calculate loss and accuracy
+        # calculate loss and accuracy
         print('Evaluating...')
-        epoch_loss = running_loss / len(trainloader)
-        training_loss.append(epoch_loss)
-        train_acc.append(test(network, trainloader, optimizer))
-        val_acc.append(test(network, valloader, optimizer))
+        train_acc.append(test(network, trainloader, optimizer, device))
+        val_acc.append(test(network, valloader, optimizer, device))
         # whether to save current model
         save_local(network, model_path, epoch)
         # print result of current epoch
@@ -309,10 +318,8 @@ def main():
         # step forward the scheduler function
         scheduler.step()
 
-        # end training
-        print('Finished Training')
-
-
+    # end training
+    print('Finished Training')
 
 
 
