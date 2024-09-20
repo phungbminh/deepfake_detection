@@ -230,7 +230,7 @@ def main():
     parser = argparse.ArgumentParser(description='CNN Deepfake detection')
     parser.add_argument('--device', type=int, default=0, help='which gpu to use if any (default: 0)')
     parser.add_argument('--epochs', type=int, default=20, help='number of epochs to train (default: 20)')
-    parser.add_argument('--networkInfo', type=str, default='VGG16', help='InceptionV3, ResNet50, or VGG16 (default: InceptionV3)')
+    parser.add_argument('--networkInfo', type=str, default='InceptionV3', help='InceptionV3, ResNet50, or VGG16 (default: InceptionV3)')
     parser.add_argument('--image_path', type=str, default='/kaggle/input/deep-fake/images/')
     args = parser.parse_args()
     print(args)
@@ -299,12 +299,17 @@ def main():
 
     # Đặt tốc độ học và bộ tối ưu hóa với weight decay (L2 Regularization)
     lr = 0.008 / 10
-    fc_params = list(map(id, network.fc.parameters()))
+
+    if networkInfo == 'VGG16':
+        fc_params = list(map(id, network.classifier.parameters()))
+    else:
+        fc_params = list(map(id, network.fc.parameters()))
+
     base_params = filter(lambda p: id(p) not in fc_params, network.parameters())
 
     optimizer = optim.Adam([
         {'params': base_params},
-        {'params': network.fc.parameters(), 'lr': lr * 10}],
+        {'params': network.classifier.parameters() if networkInfo == 'VGG16' else network.fc.parameters(), 'lr': lr * 10}],
         lr=lr, betas=(0.9, 0.999), eps=1e-08, weight_decay=1e-4)
 
     scheduler = lr_scheduler.StepLR(optimizer, step_size=5, gamma=0.5)
