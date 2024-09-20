@@ -34,7 +34,7 @@ val_real_path = val_path + 'real/'
 # divede the images provided into training and validation set (8:2)
 # create directories
 def clone_data(image_path):
-    print('Spliting dataset...')
+    print('Splitting dataset...')
     if not os.path.exists(train_path):
         os.makedirs(train_path)
     if not os.path.exists(val_path):
@@ -225,102 +225,116 @@ def evaluate(network, dataloader, optimizer):
 
 def main():
     parser = argparse.ArgumentParser(description='CNN Deepfake detection')
-    parser.add_argument('--device', type=int, default=0,help='which gpu to use if any (default: 0)')
-    parser.add_argument('--epochs', type=int, default=20, help='number of epochs to train (default: 25)')
-    parser.add_argument('--networkInfo', type=str, default='InceptionV3', help='InceptionV3, ResNet18 , or VGG16 (default: InceptionV3)')
+    parser.add_argument('--device', type=int, default=0, help='which gpu to use if any (default: 0)')
+    parser.add_argument('--epochs', type=int, default=20, help='number of epochs to train (default: 20)')
+    parser.add_argument('--networkInfo', type=str, default='InceptionV3', help='InceptionV3, ResNet50, or VGG16 (default: InceptionV3)')
     parser.add_argument('--image_path', type=str, default='/kaggle/input/deep-fake/images/')
     args = parser.parse_args()
     print(args)
     clone_data(args.image_path)
 
-    # define img transformers and create dataLoaders
-    train_tranform = transforms.Compose([
-        transforms.Resize(299),
-        transforms.CenterCrop(299),
+    networkInfo = args.networkInfo
+    if networkInfo == 'ResNet50' or networkInfo == 'VGG16':
+        img_size = 224
+    elif networkInfo == 'InceptionV3':
+        img_size = 299
+    else:
+        raise ValueError("Unsupported network: choose from InceptionV3, ResNet50, or VGG16")
+
+    normalize = [0.485, 0.456, 0.406]
+
+    train_transform = transforms.Compose([
+        transforms.Resize(img_size),
+        transforms.CenterCrop(img_size),
         transforms.RandomHorizontalFlip(p=0.5),
         transforms.RandomRotation(degrees=10, expand=False, fill=None),
         transforms.ToTensor(),
-        transforms.Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225])
-    ])
-    val_tranform = transforms.Compose([
-        transforms.Resize(299),
-        transforms.CenterCrop(299),
-        transforms.ToTensor(),
-        transforms.Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225])
+        transforms.Normalize(normalize, [0.229, 0.224, 0.225])
     ])
 
-    train_data = DFD_dataset(train_path, transforms=train_tranform)
+    val_transform = transforms.Compose([
+        transforms.Resize(img_size),
+        transforms.CenterCrop(img_size),
+        transforms.ToTensor(),
+        transforms.Normalize(normalize, [0.229, 0.224, 0.225])
+    ])
+
+    train_data = DFD_dataset(train_path, transforms=train_transform)
     trainloader = dataloader.DataLoader(train_data, batch_size=60, shuffle=True)
 
-    val_data = DFD_dataset(val_path, transforms=val_tranform)
+    val_data = DFD_dataset(val_path, transforms=val_transform)
     valloader = dataloader.DataLoader(val_data, batch_size=60, shuffle=True)
 
-    # if cuda is available, use GPU to accelerate training process
-    device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
-    # init network (pre-trained on ImageNet)
-    network = models.inception_v3(pretrained=True)
-    # input channels to fc
-    num_fc_in = network.fc.in_features
-    # change out features to 2 (fit our binary classification task)
-    network.fc = nn.Linear(num_fc_in, 2)
+    device = torch.device(f'cuda:{args.device}' if torch.cuda.is_available() else 'cpu')
+
+    # Khởi tạo mạng
+    if networkInfo == 'ResNet50':
+        network = models.resnet50(pretrained=True)
+        num_fc_in = network.fc.in_features
+        network.fc = nn.Linear(num_fc_in, 2)
+    elif networkInfo == 'VGG16':
+        network = models.vgg16(pretrained=True)
+        num_fc_in = network.classifier[6].in_features
+        network.classifier[6] = nn.Linear(num_fc_in, 2)
+    elif networkInfo == 'InceptionV3':
+        network = models.inception_v3(pretrained=True, aux_logits=False)
+        num_fc_in = network.fc.in_features
+        network.fc = nn.Linear(num_fc_in, 2)
+    else:
+        raise ValueError("Unsupported network: choose from InceptionV3, ResNet50, or VGG16")
+
     network = network.to(device)
 
-    # define loss function
+    # Định nghĩa hàm mất mát
     criterion = nn.CrossEntropyLoss()
-    # set different learning rate for revised fc layer and previous layers
-    # add weight decay (L2 Regularization)
+
+    # Đặt tốc độ học và bộ tối ưu hóa với weight decay (L2 Regularization)
     lr = 0.008 / 10
     fc_params = list(map(id, network.fc.parameters()))
     base_params = filter(lambda p: id(p) not in fc_params, network.parameters())
+
     optimizer = optim.Adam([
         {'params': base_params},
         {'params': network.fc.parameters(), 'lr': lr * 10}],
         lr=lr, betas=(0.9, 0.999), eps=1e-08, weight_decay=1e-4)
-    # learning rate decay function
+
     scheduler = lr_scheduler.StepLR(optimizer, step_size=5, gamma=0.5)
 
-    # training process
     epoch_num = args.epochs
-    # data recorders
-    training_loss = []
-    train_acc = []
-    val_acc = []
+    perf_loss = []
+    perf_train_acc = []
+    perf_val_acc = []
     test_acc = []
-    # change accordingly
+
     model_root_path = current_path + '/model_res/'
-    networkInfo = args.networkInfo
-    model_path = model_root_path + networkInfo
-    # make dirs
-    if not os.path.exists(model_root_path):
-        os.makedirs(model_root_path)
-    if not os.path.exists(model_path):
-        os.makedirs(model_path)
+    model_path = os.path.join(model_root_path, networkInfo)
+    os.makedirs(model_root_path, exist_ok=True)
+    os.makedirs(model_path, exist_ok=True)
 
-    # force pseudorandom to generate 20 random seeds for reproduce
     random.seed(88)
-    seeds = random.sample(range(0, 88), args.epochs)
+    seeds = random.sample(range(0, 88), epoch_num)
 
-    # begin training
     for epoch in range(epoch_num):
-        print("=====Epoch {}".format(epoch))
+        print("=====Epoch {}".format(epoch + 1))
         print('Training...')
         loss = train(network, trainloader, optimizer, criterion, device, seeds, epoch)
-        training_loss.append(loss)
+        perf_loss.append(loss)
 
-        # calculate loss and accuracy
         print('Evaluating...')
-        train_acc.append(test(network, trainloader, optimizer, device))
-        val_acc.append(test(network, valloader, optimizer, device))
-        # whether to save current model
+        train_acc = test(network, trainloader, optimizer, device)
+        perf_train_acc.append(train_acc)
+
+        val_acc = test(network, valloader, optimizer, device)
+        perf_val_acc.append(val_acc)
+
+        # Lưu mô hình
         save_local(network, model_path, epoch)
-        # print result of current epoch
-        print({'training_loss': training_loss, 'train_acc': train_acc, 'val_acc': val_acc})
-        # step forward the scheduler function
+
+        print({'training_loss': loss, 'train_acc': train_acc, 'val_acc': val_acc})
+
         scheduler.step()
 
-    # end training
     print('Finished Training')
-
 
 
 if __name__ == "__main__":
