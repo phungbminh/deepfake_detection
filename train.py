@@ -231,7 +231,13 @@ def main():
     parser.add_argument('--image_path', type=str, default='/kaggle/input/deep-fake/images/')
     args = parser.parse_args()
     print(args)
-    clone_data(args.image_path)
+
+
+    if not os.path.exists(train_path) or not os.path.exists(val_path):
+        # clone_data(args.image_path)
+        clone_data('D:/deepfake-detection/images/')
+    else:
+        print('Path {} exist'.format(train_path))
 
     networkInfo = args.networkInfo
     if networkInfo == 'ResNet50' or networkInfo == 'VGG16':
