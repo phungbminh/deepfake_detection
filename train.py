@@ -163,7 +163,7 @@ class DFD_dataset(Dataset):
 
         return img, label
 
-def train(network, trainloader, optimizer, criterion, device, seeds, epoch):
+def train(network, trainloader, optimizer, criterion, device, seeds, epoch, networkInfo):
     network.train()
     running_loss = 0.0
     set_seed(seeds[epoch])  # Set random seed for the current epoch
@@ -175,7 +175,10 @@ def train(network, trainloader, optimizer, criterion, device, seeds, epoch):
         labels = labels.to(device)
 
         optimizer.zero_grad()  # Zero the parameter gradients
-        outputs, x = network(inputs)  # Forward pass
+        if networkInfo == 'ResNet50' or networkInfo == 'VGG16':
+            outputs = network(inputs)  # Forward pass
+        elif networkInfo == 'InceptionV3':
+            outputs, x = network(inputs)  # Forward pass
         loss = criterion(outputs, labels)  # Calculate loss
         loss.backward()  # Backward pass
         optimizer.step()  # Optimize
@@ -227,7 +230,7 @@ def main():
     parser = argparse.ArgumentParser(description='CNN Deepfake detection')
     parser.add_argument('--device', type=int, default=0, help='which gpu to use if any (default: 0)')
     parser.add_argument('--epochs', type=int, default=20, help='number of epochs to train (default: 20)')
-    parser.add_argument('--networkInfo', type=str, default='InceptionV3', help='InceptionV3, ResNet50, or VGG16 (default: InceptionV3)')
+    parser.add_argument('--networkInfo', type=str, default='VGG16', help='InceptionV3, ResNet50, or VGG16 (default: InceptionV3)')
     parser.add_argument('--image_path', type=str, default='/kaggle/input/deep-fake/images/')
     args = parser.parse_args()
     print(args)
@@ -323,7 +326,7 @@ def main():
     for epoch in range(epoch_num):
         print("=====Epoch {}".format(epoch + 1))
         print('Training...')
-        loss = train(network, trainloader, optimizer, criterion, device, seeds, epoch)
+        loss = train(network, trainloader, optimizer, criterion, device, seeds, epoch, args.networkInfo)
         perf_loss.append(loss)
 
         print('Evaluating...')
