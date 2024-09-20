@@ -21,7 +21,8 @@ from torch.utils.data import dataloader
 from torch.utils.tensorboard import SummaryWriter
 
 
-current_path = os.getcwd()
+#current_path = os.getcwd()
+current_path = 'D:/deepfake-detection'
 train_path = current_path + '/train/'
 val_path = current_path + '/val/'
 train_fake_path = train_path + 'fake/'
@@ -184,7 +185,6 @@ def train(network, trainloader, optimizer, criterion, device, seeds, epoch):
         print(f'\rEpoch [{epoch + 1}], Batch [{i + 1}/{total_batches}] - Processing: {percent_complete:.2f}%', end='')
 
     epoch_loss = running_loss / len(trainloader)
-    print(f'\nEpoch [{epoch + 1}] Loss: {epoch_loss:.4f}')
     return epoch_loss
 
 # define test function to calculate both training and val accuracy
@@ -277,7 +277,7 @@ def main():
         num_fc_in = network.classifier[6].in_features
         network.classifier[6] = nn.Linear(num_fc_in, 2)
     elif networkInfo == 'InceptionV3':
-        network = models.inception_v3(pretrained=True, aux_logits=False)
+        network = models.inception_v3(pretrained=True)
         num_fc_in = network.fc.in_features
         network.fc = nn.Linear(num_fc_in, 2)
     else:
