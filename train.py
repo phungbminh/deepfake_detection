@@ -333,7 +333,7 @@ def main():
         print('Training...')
         loss = train(network, trainloader, optimizer, criterion, device, seeds, epoch, args.networkInfo)
         perf_loss.append(loss)
-
+        print('..')
         print('Evaluating...')
         train_acc = test(network, trainloader, optimizer, device)
         perf_train_acc.append(train_acc)
