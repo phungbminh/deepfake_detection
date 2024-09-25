@@ -123,4 +123,4 @@ def run(networkInfo, train_path, val_path, device, epochs):
     # Lưu mô hình
     utils.save_local(best_model_weights, model_path, 'BestTrain')
     print('Finished Training')
-    return perf_train_acc, perf_val_acc
+    return perf_train_acc, perf_val_acc, perf_loss
