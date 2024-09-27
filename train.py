@@ -12,12 +12,12 @@ import utils
 
 
 def run(networkInfo, train_path, val_path, device, epochs):
-    if networkInfo == 'ResNet50' or networkInfo == 'VGG16':
+    if networkInfo == 'ResNet50' or networkInfo == 'VGG19':
         img_size = 224
     elif networkInfo == 'InceptionV3':
         img_size = 299
     else:
-        raise ValueError("Unsupported network: choose from InceptionV3, ResNet50, or VGG16")
+        raise ValueError("Unsupported network: choose from InceptionV3, ResNet50, or VGG19")
 
     normalize = [0.485, 0.456, 0.406]
 
