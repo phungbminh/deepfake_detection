@@ -50,8 +50,8 @@ def run(networkInfo, train_path, val_path, device, epochs):
         network = models.resnet50(pretrained=True)
         num_fc_in = network.fc.in_features
         network.fc = nn.Linear(num_fc_in, 2)
-    elif networkInfo == 'VGG16':
-        network = models.vgg16(pretrained=True)
+    elif networkInfo == 'VGG19':
+        network = models.vgg19(pretrained=True)
         num_fc_in = network.classifier[6].in_features
         network.classifier[6] = nn.Linear(num_fc_in, 2)
     elif networkInfo == 'InceptionV3':
@@ -59,7 +59,7 @@ def run(networkInfo, train_path, val_path, device, epochs):
         num_fc_in = network.fc.in_features
         network.fc = nn.Linear(num_fc_in, 2)
     else:
-        raise ValueError("Unsupported network: choose from InceptionV3, ResNet50, or VGG16")
+        raise ValueError("Unsupported network: choose from InceptionV3, ResNet50, or VGG19")
 
     network = network.to(device)
 
@@ -68,7 +68,7 @@ def run(networkInfo, train_path, val_path, device, epochs):
     # Đặt tốc độ học và bộ tối ưu hóa với weight decay (L2 Regularization)
     lr = 0.008 / 10
 
-    if networkInfo == 'VGG16':
+    if networkInfo == 'VGG19':
         fc_params = list(map(id, network.classifier.parameters()))
     else:
         fc_params = list(map(id, network.fc.parameters()))

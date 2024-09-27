@@ -61,7 +61,7 @@ def train(network, trainloader, optimizer, criterion, device, seeds, epoch, netw
         labels = labels.to(device)
 
         optimizer.zero_grad()  # Zero the parameter gradients
-        if networkInfo == 'ResNet50' or networkInfo == 'VGG16':
+        if networkInfo == 'ResNet50' or networkInfo == 'VGG19':
             outputs = network(inputs)  # Forward pass
         elif networkInfo == 'InceptionV3':
             outputs, x = network(inputs)  # Forward pass
@@ -117,9 +117,9 @@ def predict_image(image_path, networkInfo):
     if networkInfo == 'ResNet50':
         img_size = 224
         network = models.resnet50(pretrained=True)
-    elif networkInfo == 'VGG16':
+    elif networkInfo == 'VGG19':
         img_size = 224
-        network = models.vgg16(pretrained=True)
+        network = models.vgg19(pretrained=True)
     elif networkInfo == 'InceptionV3':
         img_size = 299
         network = models.inception_v3(pretrained=True)
