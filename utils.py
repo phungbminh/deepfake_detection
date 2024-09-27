@@ -124,7 +124,7 @@ def predict_image(image_path, networkInfo):
         img_size = 299
         network = models.inception_v3(pretrained=True)
     else:
-        raise ValueError("Unsupported network: choose from InceptionV3, ResNet50, or VGG16")
+        raise ValueError("Unsupported network: choose from InceptionV3, ResNet50, or VGG19")
     test_tranform = transforms.Compose([
         # transforms.Resize(299),
         # transforms.CenterCrop(299),

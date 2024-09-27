@@ -77,7 +77,7 @@ def run(networkInfo, train_path, val_path, device, epochs):
 
     optimizer = optim.Adam([
         {'params': base_params},
-        {'params': network.classifier.parameters() if networkInfo == 'VGG16' else network.fc.parameters(),
+        {'params': network.classifier.parameters() if networkInfo == 'VGG19' else network.fc.parameters(),
          'lr': lr * 10}],
         lr=lr, betas=(0.9, 0.999), eps=1e-08, weight_decay=1e-4)
 

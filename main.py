@@ -22,7 +22,7 @@ def main():
     parser = argparse.ArgumentParser(description='CNN Deepfake detection')
     parser.add_argument('--device', type=int, default=0, help='which gpu to use if any (default: 0)')
     parser.add_argument('--epochs', type=int, default=20, help='number of epochs to train (default: 20)')
-    parser.add_argument('--networkInfo', type=str, default='InceptionV3', help='InceptionV3, ResNet50, or VGG16 (default: InceptionV3)')
+    parser.add_argument('--networkInfo', type=str, default='InceptionV3', help='InceptionV3, ResNet50, or VGG19 (default: InceptionV3)')
     parser.add_argument('--image_path', type=str, default='/kaggle/input/deep-fake/images/')
     args = parser.parse_args()
     print(args)
