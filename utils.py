@@ -9,6 +9,19 @@ import argparse
 import torch
 from torch.utils.data import Dataset
 
+import os
+from PIL import Image
+import random
+
+
+import torch
+import torch.nn as nn
+
+from torchvision import models
+from torchvision import transforms
+from torch.utils.data import Dataset
+from torch.utils.data import dataloader
+
 
 # define training and validation dataset class
 class DFD_dataset(Dataset):
@@ -99,3 +112,48 @@ def set_seed(seed):
 def evaluate(network, dataloader, optimizer):
     accuracy = test(network, dataloader, optimizer)
     return accuracy
+
+def predict_image(image_path, networkInfo):
+    if networkInfo == 'ResNet50':
+        img_size = 224
+        network = models.resnet50(pretrained=True)
+    elif networkInfo == 'VGG16':
+        img_size = 224
+        network = models.vgg16(pretrained=True)
+    elif networkInfo == 'InceptionV3':
+        img_size = 299
+        network = models.inception_v3(pretrained=True)
+    else:
+        raise ValueError("Unsupported network: choose from InceptionV3, ResNet50, or VGG16")
+    test_tranform = transforms.Compose([
+        # transforms.Resize(299),
+        # transforms.CenterCrop(299),
+        transforms.Resize(img_size),
+        transforms.CenterCrop(img_size),
+        transforms.ToTensor(),
+        transforms.Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225])
+    ])
+    model_root_path = os.getcwd() + '/model_res/'
+    model_path = os.path.join(model_root_path, networkInfo)
+    device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+
+    num_fc_in = network.fc.in_features
+    network.fc = nn.Linear(num_fc_in, 2)
+    network.load_state_dict(torch.load( model_path + '/BestTrain.pt', map_location=device))
+    network.to(device)
+    network.eval()
+
+    img = Image.open(image_path).convert("RGB")
+    img_tensor = test_tranform(img).unsqueeze(0).to(device)  # Thêm chiều batch
+
+
+    with torch.no_grad():
+        outputs = network(img_tensor)
+        _, predicted = torch.max(outputs, 1)
+
+    result = 'Real' if predicted.item() == 1 else 'Fake'
+
+    plt.imshow(img)
+    plt.title(f'Prediction: {result}')
+    plt.axis('off')
+    plt.show()
